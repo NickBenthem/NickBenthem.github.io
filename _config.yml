@@ -30,7 +30,7 @@ plugins:
   - jekyll-paginate
 
 
-copyright: "This site is made by Nick. Hello."
+copyright: "Let me know if you found something useful."
 
 author:
   name: Nick Benthem
@@ -44,7 +44,7 @@ defaults:
       path: "assets/img"
     values:
       image: true
-      
+
 footer_links:
   - title: Twitter
     url: https://twitter.com/NickBenthem
