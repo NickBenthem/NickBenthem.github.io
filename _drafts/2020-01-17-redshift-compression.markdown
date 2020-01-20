@@ -37,7 +37,7 @@ However, we now have two problems:
 
 This of course is problematic. Any sort of compression we do now needs requires us to perform non-business add value to our work by creating this schema, ensuring that all values become compressed, and generally slowing us down.
 
-## Enabling this compression using redshift
+## Enabling compression using redshift
 
 Thankfully, we're able to gain these sorts of storage benefits in redshift, all without having to generate a full data warehouse scheme and create user views.
 
