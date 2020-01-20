@@ -9,4 +9,4 @@ One of the things we've been dealing with at Everlane has been dealing with some
 # A brief primer on compression
 
 
-![](img/2020-01-20T00-34-45.png){:height="360px" width="360px"}
+![](/assets/img/2020-01-20T00-34-45.png){:height="360px" width="360px"}
