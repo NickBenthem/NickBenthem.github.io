@@ -5,7 +5,7 @@ date: "2020-01-17 14:12:10 -0800"
 tags: Kubernetes R DataScience Docker Airflow
 ---
 # **TL;DR**
-Use the KubernetesExecutor to implement existing ETLs. Use the  KubernetesPodOperator to write self-contained applications.
+Use KubernetesExecutor to abstract away Kubernetes and Docker complexities. Use the KubernetesPodOperator to write self-contained applications.
 
 # Background
 We've been exploring standardizing our ETL orchestration tools at [Everlane](https://www.everlane.com/) for our data team. We sell modern basics with ethical factories and radically transparent pricing.
@@ -74,11 +74,11 @@ If you use the Kubernetes Executor with a KubernetesPodOperator, you will infact
 
 ## Addendum -
 
-<b id="f1">1</b> https://www.astronomer.io/guides/airflow-executors-explained/ - If you're looking for an overview of the different executors and aren't decided on Kubernetes as your compute/container platform, Astronomer has a great introduction [↩](#a1)
+<b id="f1">1</b> https://www.astronomer.io/guides/airflow-executors-explained/ - If you're looking for an overview of the different executors and aren't decided on Kubernetes as your compute/container platform, Astronomer has a great layout of what each executor does, as well as some common terms. [↩](#a1)
 
 <b id="f2">2</b> https://medium.com/bluecore-engineering/were-all-using-airflow-wrong-and-how-to-fix-it-a56f14cb0753 - Jessica Laughlin's excellent summary of the KubernetesPodOperator. This helped me get started with how Kubernetes works inside of Airflow. [↩](#a2)
 
 
 <b id="f3">3</b> https://www.sicara.ai/blog/2019-04-08-apache-airflow-celery-workers - This article by Sicara is good if you'd like to know more of how the celery executor works. A celery executor is probably unnecessary with the KubernetesPodOperator unless you have massive numbers of jobs and require the ability to send off the task to be picked up by the celery worker to then spin up the KubernetesPod [↩](#a3)
 
- <b id="f4">4</b>  We actually use Operators that extend the Operator we are trying to use - I.e., ExtendedPostgresOperator to allow us to integrate and kick off certain job tracking utilities as well as provide defaults to the team without modifying the original Airflow code. [↩](#a4)
+ <b id="f4">4</b>  We actually use Operators that extend the Operator we are trying to use - I.e., ExtendedPostgresOperator to allow us to integrate and kick off certain job tracking utilities as well as help codify our team's decisions and provide default options (`image`) to the analysts without modifying the original Airflow code. [↩](#a4)
