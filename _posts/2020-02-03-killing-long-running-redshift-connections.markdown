@@ -4,6 +4,9 @@ title: "Killing long running redshift connections"
 date: "2020-02-03 12:10:38 -0800"
 ---
 
+We recently ran into an issue where we needed to kill database connections to redshift. To do so, we just wrote the following script.
+
+
 We recently ran into an issue where
 
 ```
@@ -21,3 +24,5 @@ END;
 $$
  LANGUAGE plpgsql
  ```
+
+ ![Michael Krombopulus](/assets/img/killing-long-running-redshift-connections/michael-krombopulus.gif)
