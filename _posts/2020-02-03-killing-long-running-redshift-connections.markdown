@@ -25,4 +25,4 @@ $$
  LANGUAGE plpgsql
  ```
 
- ![Michael Krombopulus](/assets/img/killing-long-running-redshift-connections/michael-krombopulus.gif)
+ ![Michael Krombopulus](/assets/img/killing-long-running-redshift-connections/michael-krombopulos.gif)
