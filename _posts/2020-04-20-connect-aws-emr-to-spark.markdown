@@ -5,7 +5,7 @@ date: "2020-04-20 21:52:14 -0700"
 ---
 
 
-I'm making this post since this Github page (https://github.com/databricks/spark-redshift) seems to be abandonded by Databricks. It's pretty good - so if you need details, that's a great place to start.
+I'm making this post since this [Databricks redshift Github page](https://github.com/databricks/spark-redshift) seems to be abandonded by Databricks. It's pretty good - so if you need details, that's a great place to start.
 
 To do this, you need drivers for Spark to connect to Redshift. Download the following four files:
 
