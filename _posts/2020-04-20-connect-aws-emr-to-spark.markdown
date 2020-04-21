@@ -5,6 +5,7 @@ date: "2020-04-20 21:52:14 -0700"
 tags: AWS EMR Redshift Spark SQL Python S3
 ---
 
+# How to connect your Spark Cluster to Redshift
 
 I'm making this post since this [Databricks redshift Github page](https://github.com/databricks/spark-redshift) seems to be abandonded by Databricks. It's pretty good - so if you need details, that's a great place to start.
 
