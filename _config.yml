@@ -14,7 +14,7 @@
 # You can create any custom variable you would like, and they will be accessible
 # in the templates via {{ site.myvariable }}.
 title:  Nick's Data Blog
-email: nickb@everlane.com
+email: nick {at} benthem.io
 description: >- # this means to ignore newlines until "baseurl:"
   Data Science and Engineering
 baseurl: "" # the subpath of your site, e.g. /blog
@@ -36,7 +36,7 @@ plugins:
   - jekyll-figure
 
 
-copyright: "Let me know if you found something useful: NicholasBenthem {{at}} gmail.com"
+copyright: "Let me know if you found something useful: nick {{at}} benthem.io"
 
 author:
   name: Nick Benthem
