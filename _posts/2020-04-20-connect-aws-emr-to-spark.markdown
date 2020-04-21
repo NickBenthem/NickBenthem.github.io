@@ -2,6 +2,7 @@
 layout: post
 title: "Connect AWS EMR to Redshift"
 date: "2020-04-20 21:52:14 -0700"
+tags: AWS EMR Redshift Spark SQL Python S3
 ---
 
 
@@ -16,10 +17,10 @@ https://repo1.maven.org/maven2/com/databricks/spark-avro_2.11/3.0.0/spark-avro_2
 https://s3.amazonaws.com/redshift-downloads/drivers/jdbc/1.2.41.1065/RedshiftJDBC4-no-awssdk-1.2.41.1065.jar
 ```
 
-Next - you need to get these on your machine. If you're using EMR and have a notebook- you can do place the jars in s3 and reference then. Here, I stored them in my "myBucket" bucket
+Next - you need to get these on your machine. Place the following code in the first cell in your EMR Juypter notebook. I stored them in my "myBucket" bucket
 
 ```
-
+#%%configure -f
 { "conf": {"spark.jars":"s3://myBucket/spark-redshift_2.10-2.0.1.jar,"
                         "s3://myBucket/minimal-json-0.9.5.jar,"
                         "s3://myBucket/spark-avro_2.11-3.0.0.jar,"
