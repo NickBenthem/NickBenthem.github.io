@@ -3,6 +3,8 @@ layout: post
 title: "Connect AWS EMR to Redshift"
 date: "2020-04-20 21:52:14 -0700"
 tags: AWS EMR Redshift Spark SQL Python S3
+author: Nick
+share: true
 ---
 
 # How to connect your Spark Cluster to Redshift
