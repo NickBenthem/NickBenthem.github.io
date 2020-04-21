@@ -24,7 +24,7 @@ url: "https://benthem.io" # the base hostname & protocol for your site, e.g. htt
 
 # Build settings
 markdown: kramdown
-remote_theme: "mmistakes/so-simple-theme@3.2.0"
+#remote_theme: "mmistakes/so-simple-theme@3.2.0"
 plugins:
   - jekyll-feed
   - jekyll-paginate
@@ -46,9 +46,9 @@ author:
 
 defaults:
   - scope:
-      path: "assets/img/"
+      path: ""
     values:
-      image: true
+      image: ""
 
 footer_links:
   - title: Twitter
