@@ -40,13 +40,13 @@ copyright: "Let me know if you found something useful."
 author:
   name: Nick Benthem
   twitter: NickBenthem
-  picture: https://media-exp1.licdn.com/dms/image/C4D03AQFcAnCXLYfSzA/profile-displayphoto-shrink_200_200/0?e=1584576000&v=beta&t=vecSnrxt3SprcPSm70_2cziEMamfCmt0XFpi_hy742s
+  picture: /assets/img/NickPhoto.jpeg
 
 #logo: https://media-exp1.licdn.com/dms/image/C4D03AQFcAnCXLYfSzA/profile-displayphoto-shrink_200_200/0?e=1584576000&v=beta&t=vecSnrxt3SprcPSm70_2cziEMamfCmt0XFpi_hy742s
 
 defaults:
   - scope:
-      path: "assets/img/NickPhoto.jpeg"
+      path: "assets/img/"
     values:
       image: true
 

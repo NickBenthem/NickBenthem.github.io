@@ -19,8 +19,11 @@ https://s3.amazonaws.com/redshift-downloads/drivers/jdbc/1.2.41.1065/RedshiftJDB
 Next - you need to get these on your machine. If you're using EMR and have a notebook- you can do place the jars in s3 and reference then. Here, I stored them in my "myBucket" bucket
 
 ```
-%%configure -f
-{ "conf": {"spark.jars":"s3://myBucket/spark-redshift_2.10-2.0.1.jar,s3://myBucket/minimal-json-0.9.5.jar,s3://myBucket/spark-avro_2.11-3.0.0.jar,RedshiftJDBC4-no-awssdk-1.2.41.1065.jar"} }
+
+{ "conf": {"spark.jars":"s3://myBucket/spark-redshift_2.10-2.0.1.jar,"
+                        "s3://myBucket/minimal-json-0.9.5.jar,"
+                        "s3://myBucket/spark-avro_2.11-3.0.0.jar,"
+                        "RedshiftJDBC4-no-awssdk-1.2.41.1065.jar"} }
 ```
 
 This is a magic hint for the IPython notebook and will install your libraries at the beginning of the notebook.
@@ -67,4 +70,4 @@ users_max_df = sql_context.read.format("com.databricks.spark.redshift")\
                                     .load()
 ```
 
-Now you can have all your wonderful Redshift data in EMR.                   
+Now you can have all your wonderful Redshift data in EMR.
