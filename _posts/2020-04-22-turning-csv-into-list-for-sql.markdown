@@ -2,6 +2,8 @@
 layout: post
 title: "Turning csv into list for SQL"
 date: "2020-04-22 11:53:10 -0700"
+author: Nick
+share: true
 ---
 
 So this is something I've been doing for a long time - if you have a CSV of values and don't want to write a Python script to read in the results and execute SQL, you can go ahead and use Excel/GoogleSheets/{your favorite spreadsheet program} to create this into a comma seperated list.
