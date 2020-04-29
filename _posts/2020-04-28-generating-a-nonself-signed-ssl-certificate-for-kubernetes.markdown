@@ -4,7 +4,7 @@ title: "Generating a non-self signed SSL Certificate for Kubernetes"
 date: "2020-04-28 16:47:03 -0700"
 ---
 
-We had an issue with our Kubernetes cluster running Astronomer where we had a SSL certificate for our cluster - but it had a 90 day expiration. The configuration was through Terraform, but due to some version skew, as well as complicated dependency trees we didn't want to address, we needed to generate a valid SSL certificate - and update a secret that containers in EKS were using. Here's how we did it.
+We had an issue with our Kubernetes cluster running Astronomer where we had a SSL certificate for our cluster - but it had a 90 day expiration. The configuration was through Terraform, but due to some version skew, as well as complicated dependency trees we didn't want to address, we needed to generate a valid SSL certificate today - and update a secret that containers in EKS were using. Typically - you should automate this process somehow (Airflow job or some similarly scheduled performance), but if you need the manual version - here's how we did it.
 
 # 1 - Generate a valid SSL cert.
 Since we're using Kubernetes, we can use a Docker container to handle this for us.
