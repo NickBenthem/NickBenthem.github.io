@@ -34,7 +34,7 @@ When the worker pod runs, a new Airflow instance is instantiated and the code th
 hello_word = BashOperator(task_id = 'hello world',
                               bash_command = "echo 'hello world'",
                               executor_config=  {"KubernetesExecutor": {
-                                                                        "image": "your_image_with_airflow")
+                                                                        "image": "your_image_with_airflow"
                                                                        }
                                                  }
                          )
