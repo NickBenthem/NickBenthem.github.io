@@ -2,7 +2,7 @@
 layout: post
 title: "Connect AWS EMR to Redshift"
 date: "2020-04-20 21:52:14 -0700"
-tags: AWS EMR Redshift Spark SQL Python S3
+tags: AWS EMR Redshift Spark SQL Python S3 load data from redshift databricks
 author: Nick
 share: true
 ---
