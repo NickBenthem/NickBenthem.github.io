@@ -4,9 +4,11 @@ title: "Connecting Databricks to Redshift with SparklyR"
 date: "2020-12-22 09:05"
 ---
 
-Databricks gives documentation hooking up Spark with Redshift using the raw Spark libraries, but not with SparklyR, which gives some great functions you want (notably - dplyr syntax).
+Databricks gives documentation hooking up Spark with Redshift using the raw Spark libraries, but not with SparklyR, which gives some great functions you want (notably - dplyr syntax). This post is how to connect the two.
 
-Unsurprisingly, you need to use the `sparklyr::spark_read_jdbc` command, but critically, you need redshift jdbc42 driver installed - you can install with Maven or follow the instructions at AWS (https://docs.aws.amazon.com/redshift/latest/mgmt/configure-jdbc-connection.html#download-jdbc-driver). Once it's installed - you can just use the following function to get your data - the critical component here is the `driver = "com.amazon.redshift.jdbc42.Driver"` piece. Your jdbcUrl needs to be of the form `jdbc:postgresql://endpoint:port/database`
+Unsurprisingly, you need to use the `sparklyr::spark_read_jdbc` command, but critically, you need the redshift jdbc42 driver installed - you can install with Maven or follow the instructions at AWS (https://docs.aws.amazon.com/redshift/latest/mgmt/configure-jdbc-connection.html#download-jdbc-driver). Installing the driver is easy in Databricks - I usually [install the driver in the cluster](https://docs.databricks.com/libraries/cluster-libraries.html) - but you can install it in the notebook if you want.
+
+ Once it's installed - you can just use the following function to get your data - the critical component here is the `driver = "com.amazon.redshift.jdbc42.Driver"` piece. Your jdbcUrl needs to be of the form `jdbc:postgresql://endpoint:port/database`
 
 i.e.,
 
