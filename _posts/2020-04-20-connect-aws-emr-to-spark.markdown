@@ -75,3 +75,7 @@ users_max_df = sql_context.read.format("com.databricks.spark.redshift")\
 ```
 
 Now you can have all your wonderful Redshift data in EMR.
+
+EDIT: A reader hit trouble with uploading and used the following to troubleshoot the ivy logs. See https://stackoverflow.com/questions/66387589/aws-emr-driver-jars for more.
+
+At this point - I wouldn't really recommend EMR - We jumped over to databricks and the results have been much better overall. There's a small increase in price - but the features are well worth the trouble.
