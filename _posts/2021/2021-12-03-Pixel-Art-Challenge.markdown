@@ -6,15 +6,15 @@ date: 2021-12-03 23:58
 
 This one was pretty fun. During a team social - we were asked to draw a picture in Google Sheets given a color pallete - 1 was red, 2 was blue, 3 was black, etc.
 
-First - we had to create this image ![What a great dance](unicorn-dab.png)
+First - we had to create this image ![What a great dance](/assets/img/pixel-art-challenge/unicorn-dab.png)
 
 Which we ended up doing in grids - this took about 10 minutes between 4 of us. 
 
- ![](unicorn-dab-google-sheets.png)
+ ![](/assets/img/pixel-art-challenge/unicorn-dab-google-sheets.png)
 
 We won the contest - but there was a second tab of the Mona Lisa we weren't able to get to. 
 
-![What a beauty.](mona-lisa-orginial.png)
+![What a beauty.](/assets/img/pixel-art-challenge/mona-lisa-orginial.png)
 
 However - I got bored over my lunch break - and was able to code up the following algorithm.
 
@@ -73,6 +73,6 @@ for index_x, x in enumerate(data):
 pd.DataFrame(new_array).to_clipboard()
 ```
 
-I used Digital Color Meter to get the RGB values for the dictionary - and this great `PIL` library. Doing so - I was able to get the following ![](finished-mona-lisa.png)
+I used Digital Color Meter to get the RGB values for the dictionary - and this great `PIL` library. Doing so - I was able to get the following ![](/assets/img/pixel-art-challenge/finished-mona-lisa.png)
 
 There's a lot of fun you can do with modern python :).
