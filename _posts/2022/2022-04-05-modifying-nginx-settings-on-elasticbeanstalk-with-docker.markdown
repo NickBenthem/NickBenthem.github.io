@@ -17,6 +17,9 @@ This works for the new AWS Linux 2 environment. To fix this - you need to wrap y
 With that - you now need to add a `.platform` folder as follows:
 
 ```
+APP ROOT
+├── Dockerfile
+├── Dockerrun.aws.json
 ├── .platform
 │   └── nginx
 │       └── conf.d
@@ -32,14 +35,14 @@ client_max_body_size 50M;
 
 Or whatever you want for your config. With that - modify your zip to now be 
 
-```zip -r deploy.zip Dockerrun.aws.json```
+```zip -r deploy.zip Dockerrun.aws.json .platform```
 
 And deploy. Your Nginx server will now respect the new command
 
 # Why this works
 This comes from [AWS' documentation](https://docs.aws.amazon.com/elasticbeanstalk/latest/dg/platforms-linux-extend.html#platforms-linux-extend.proxy.nginx) - note how in the steps of how Elastic Bean Stalk builds your application - there's an explicit step to run your hooks & nginx config under the .platform - we're simply providing that information. 
 
- ![](../../assets/img/modifying-nginx-settings-on-elasticbeanstalk-with-docker/aws-diagram.png)
+ ![](assets/img/modifying-nginx-settings-on-elasticbeanstalk-with-docker/aws-diagram.png)
 
 
 
