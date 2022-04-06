@@ -2,10 +2,6 @@
 layout: post
 title: Modifying Nginx settings on ElasticBeanStalk with Docker
 date: 2022-04-05 19:38
-category: 
-author: 
-tags: []
-summary: 
 ---
 
 We run our stack on ElasticBeanStalk - and have potentially large payloads. The default payload length is 1MB for nginx - which was too small for us. Here's how to update that in ElasticBeanStalk if you run a Dockerfile. 
@@ -15,7 +11,7 @@ The problem boils down to the runtime configuration of the docker file is not mo
 Unfortunately - AWS's documentation is pretty poor here. 
 
 # The solution 
-To fix this - you need to wrap your configuration file. You should have, if you're using Docker, a zip file (mine is called `deploy.zip`) that contains your `Dockerrun.aws.json`. If you don't - it's rather easy to modify, just zip your deploy via 
+This works for the new AWS Linux 2 environment. To fix this - you need to wrap your configuration file. You should have, if you're using Docker, a zip file (mine is called `deploy.zip`) that contains your `Dockerrun.aws.json`. If you don't - it's rather easy to modify, just zip your deploy via 
 ```zip -r deploy.zip Dockerrun.aws.json```
 
 With that - you now need to add a `.platform` folder as follows:
