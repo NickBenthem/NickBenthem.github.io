@@ -34,8 +34,9 @@ plugins:
   - jekyll-sitemap
   - jekyll-auto-image
   - jekyll-figure
-
-
+  - jekyll-toc
+  - jemoji
+  
 copyright: "Let me know if you found something useful: nick {{at}} benthem.io"
 
 author:
@@ -72,6 +73,13 @@ google_analytics: UA-156152306-1
 skin: "/assets/css/skins/light.css"
 
 read_time: true
+
+toc:
+  list_id: toc # Default: "toc"
+  list_class: section-nav # Default: "section-nav"
+  # sublist_class: my-sublist-class # Default: no class for sublists
+  item_class: toc-entry # Default: "toc-entry"
+  item_prefix: toc- # Default: "toc-":
 
 google_fonts:
   - name: "Source Sans Pro"
