@@ -1,6 +1,6 @@
 ---
 layout: post
-title: What actually happens when you copy in Postgres?
+title: What actually happens when you COPY in Postgres?
 date: 2023-08-16 13:38
 tags: Postgres
 goal: Discuss how COPY functions, diving into Postgres source code.
@@ -10,21 +10,27 @@ toc: true
 
 
 # Background
-I recently had a question come up as to WHY the COPY command is more performant. I'd know that COPY is [far and away more performant](https://www.cybertec-postgresql.com/en/bulk-load-performance-in-postgresql/)  than inserting records via `INSERT INTO`. However - I realized my current understanding wasn't logical, and this post is my attempt to dig into how COPY works. I could only find this [stack overflow post](https://stackoverflow.com/questions/46715354/how-does-copy-work-and-why-is-it-so-much-faster-than-insert), but I wanted to dive deeper and know what's going on under the hood.  One of the best parts of Postgres (or open source in general) is that we can look at the source code & documentation, so we'll be diving right in.
+I recently had a question come up as to why the COPY command is more performant than performing a series of INSERTs. I'd known that COPY is [much more performant](https://www.cybertec-postgresql.com/en/bulk-load-performance-in-postgresql/) than inserting records via `INSERT INTO`. While trying to come up with an answer, I realized that I didn't know how COPY is implemented. This meant that any attempt to come up with an answer was in vain. By writing this post, I hope to narrow that knowledge gap and help myself get a deeper understanding of my favorite database. 
 
+This post will focus primarily on the Postgres implementation when performing a `COPY FROM` command and will stop short of diving into the internals of `libpq` . This post will also serve as a primer for understanding how `INSERT INTO` works, though I won't go into too much detail in this post. 
 
-[What happens when a Postgres query is executed](#message_queue)
+Previously I had thought that COPY was somehow special, perhaps opening a direct file connection to the underlying data table to achieve the speed COPY does - but that's not the case. As we'll see, COPY loads in data and utilizes a special code path to minimizes the amount of overhead to transmit data to the `libpq` backend. One of the best parts of Postgres (or open source in general) is that we can look at the source code & documentation, so we'll be diving right into some source code. Let's get started.
+
 # What happens when a Postgres query is executed? 
-When executing a valid SQL command (i.e., `COPY FROM`, `SELECT ... FROM`, `INSERT INTO ...`), Postgres will rely on sending the command to `libpq`, the API backend for Postgres. Postgres encodes the command in a special format. There are [a variety of different message types and formats](https://www.postgresql.org/docs/current/protocol-message-formats.html) supported by `libpq`, however, they all start with a single `byte` indicating the message type, and also contain a payload. 
+When executing a valid SQL query command (i.e., `COPY FROM`, `SELECT ... FROM`, `INSERT INTO ...`), Postgres will rely on sending the command to `libpq`, the API backend for Postgres. To effectively communicate, Postgres will encode the command according to the message protocol that `libpq` uses. There are [a variety of different message types and formats](https://www.postgresql.org/docs/current/protocol-message-formats.html) supported by `libpq`. For the case of a SQL query that the user enters, the payload will consist of the following elements:
 
-Imagine we ask for a simple request, such as `select 1;` - this gets encoded as the following:
+- Byte1('Q') (Identifies the message as a simple query.)
+- Int32 (Length of message contents in bytes, including self.)
+- String (The query string itself)
+
+Imagine we ask for a simple request, such as `select 1;` - this gets encoded as the following message:
 
 <figure>
   <img src="/assets/img/what-actually-happens-when-you-run-copy-in-postgres/select-1-example.png" alt='Encoded message to `libpq` for "select 1;'/>
   <figcaption style="text-align:center">Encoded message to libpq for "select 1;"</figcaption>
 </figure>
 
-After encoding the request, the message gets placed into an outbound buffer. This buffer serves to minimzes the number of round-trip communications that need to occur. Once the buffer is full or flushed[^1], the buffer of messages is sent to `libpq` and Postgres receives a result back. In returning a result, `libpq` also send back metadata information about the result status to the invoker. 
+After encoding the request, the message gets placed into an outbound buffer. This buffer serves to minimzes the number of round-trip communications that need to occur. Once the buffer is full or is being flushed[^1], the current buffer of messages is sent to `libpq` via a function call. As part of the return, Postgres will receive a result back, as well as metadata information about the result status to the invoker. 
 
 There are [quite a few](https://github.com/postgres/postgres/blob/master/src/interfaces/libpq/libpq-fe.h#L95-L115) statuses a result could have:
 ```	c
@@ -61,10 +67,7 @@ There's a lot of code to break down in `handleCopyIn`.
 </video>
 <figcaption style="text-align:center">handleCopyIn's source code</figcaption>
 
-
-I suggest opening up the [code in GitHub](https://github.com/postgres/postgres/blob/master/src/bin/psql/copy.c#L511) (or cloning the repository and using your IDE) for the next section. For our purposes, we'll focus our attention on [L592-L668](https://github.com/postgres/postgres/blob/master/src/bin/psql/copy.c#L592-L668). There's quite a bit of handling for scenarios such as if the input is interactive, if we're copying in binary, or if there's a signal interrupt.
-
-To aid the reader, I've copied the pertinent section behind this code block (though I really suggest cloning),
+I suggest opening up the [code in GitHub](https://github.com/postgres/postgres/blob/master/src/bin/psql/copy.c#L511) (or cloning the repository and using your IDE) for the next section. For our purposes, we'll focus our attention on [L592-L668](https://github.com/postgres/postgres/blob/master/src/bin/psql/copy.c#L592-L668). There's quite a bit of handling for scenarios such as if the input is interactive, if we're copying in binary, or if there's a signal interrupt. To aid the reader, I've copied the pertinent section behind this code block (though I suggest cloning and reading along, you get better highlighting),
 
 <details>
 <summary>
@@ -276,7 +279,13 @@ Let's go through the above function `handleCopyIn` at a high level. The general 
 
 # How do `PQputCopyData` and `PQputCopyEnd` work?
 
-In the previous function `handleCopyIn`, we're continuously iterating through the `FILE` input. `PQputCopyData` handles the flushing[^1] of the buffer while ensuring that messages are encoded and sent out to `libpq`. As we can see in `handleCopyIn`. As [mentioned previously](#message_queue), to communicate with `libpq` we construct a message to send over. The COPY functionality has a unique `d` [(https://www.postgresql.org/docs/current/protocol-message-formats.html)](message type) that `libpq` uses to receive COPY data from Postgres. 
+In the previous function `handleCopyIn`, we're continuously iterating through the `FILE` input. `PQputCopyData` handles the flushing[^1] of the buffer while ensuring that messages are encoded and sent out to `libpq`. As we can see in `handleCopyIn`. As [mentioned previously](#what-happens-when-a-postgres-query-is-executed), to communicate with `libpq` we construct a message to send over. The COPY functionality has a unique `d` [(https://www.postgresql.org/docs/current/protocol-message-formats.html)](message type) that `libpq` uses to receive COPY data from Postgres. `d` is the CopyData message, and has the following elements:
+
+- Byte1('d') (Identifies the message as COPY data.)
+- Int32 (Length of message contents in bytes, including self.)
+- Byte**n** (Data that forms part of a COPY data stream). 
+
+This message type looks very similar to the `Q` message type we encountered when we sent a `SELECT 1;`, but rather than send the string of a query, we send the data we've read from the `FILE`.
 
 You can see this behavior in the [code from PQputCopyData](https://github.com/postgres/postgres/blob/master/src/interfaces/libpq/fe-exec.c#L2699-2702) here:
 
@@ -305,7 +314,7 @@ if (nbytes > 0)
 }
 ```
 
-Note that we never perform additional processing on the `d` messages beyond validating they were received correctly - we're continuously writing the data messages, but we'll need to stop at some point. This is where `PQputCopyEnd` comes into place. We [simply send a message to](https://github.com/postgres/postgres/blob/master/src/interfaces/libpq/fe-exec.c#L2731-L2745) `libpq` indicating that the COPY is complete (`c` message), or the copy has failed (`f` message).
+An important implementation note is that we never perform additional processing on the `d` messages. The only validation we receive from `libpq` is that a given message is received - we do no other validation until the end. In essence,  we're continuously sending messages as fast as we can read them in and transmit them. This is great - we have lower overhead, but once we hit the end of our `FILE`, we will need to inform `libq` that we're done performing our copy. This is where `PQputCopyEnd` comes into place. After the `FILE` has been full read from, Postgres will [send a message to](https://github.com/postgres/postgres/blob/master/src/interfaces/libpq/fe-exec.c#L2731-L2745) `libpq` indicating that the COPY is complete (via `c` message), or the copy has failed (via `f` message).
 
 ```c
 if (errormsg)
@@ -327,14 +336,12 @@ else
 
 # Conclusion
 
-Postgres COPY works by emitting many messages to `libpq` to transmit data from an IO buffer - once all messages have been received successfully, Postgres will emit a special message letting `libpq` know that the copy is complete.
+As we can see, Postgres COPY works by emitting many messages to `libpq` to transmit data from a `FILE` via continously flushing a buffer. Once all messages have been received successfully, Postgres will emit a special message letting `libpq` know that the copy is complete.
 
-Previously I had thought that COPY opened a direct file connection to achieve the speed it does - but that's not the case here. COPY does however use a special event stream that tries to minimize the amount of overhead to transmit data. 
-
-I think I'll do another post on how systems like `psycopg` handle the IO buffer. There are ways to use the `COPY FROM` utilizing a python `StringIO` buffer. The code we've seen utilizes a C `FILE` referenced, but I'm still not sure how data gets transferred to the server in the first place. I would also like to do a bit more digging on the `libpq`` side of this operation, including how the data is written to the WAL and processed. My current theory is that `libpq` will have special code to handle the buffered input, but I'm not sure. 
+I plan on doing another post on how systems like `psycopg` handle the IO buffer. There are ways in python to utilize the `COPY FROM` command and feed the STDIN as a python `StringIO` buffer. I'd like to dig more into how a C `FILE` reference is created on the server to utilize the above code. I plan to also do more more digging on the `libpq` side of this operation, including how the data is written to the WAL and processed. My current theory is that `libpq` will have special code to handle the buffered input, but I'm not sure right now. 
 
 Thanks for reading - let me know if this was helpful or if I missed anything :smiley:.
 
 [^1]: Flushing refers to evacuating a buffer and moving the data somewhere else. My mental model is to think of data as a liquid, and we're filling a sink. We continuously load up the same sink, but have different liquid in the sink each time. When the sink is about to overflow, we "flush" the data - taking data that's in our sink and moving that data to a new location. We then allow our sink to refill with new, potentially different data. We never move the sink, just the liquid in the sink.
 
-[^2]: There's also a `PGRES_COPY_OUT` command to offload data that could be returned if you are writing a SQL output to a file, but we'll ignore that for now. 
+[^2]: You might notice there's also a `PGRES_COPY_OUT` command that can be used to offload SQL output to a file, but we'll ignore that for now. 
