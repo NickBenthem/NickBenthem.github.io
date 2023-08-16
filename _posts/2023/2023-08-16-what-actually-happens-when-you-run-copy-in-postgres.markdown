@@ -30,7 +30,7 @@ Imagine we ask for a simple request, such as `select 1;` - this gets encoded as 
   <figcaption style="text-align:center">Encoded message to libpq for "select 1;"</figcaption>
 </figure>
 
-After encoding the request, the message gets placed into an outbound buffer. This buffer serves to minimzes the number of round-trip communications that need to occur. Once the buffer is full or is being flushed[^1], the current buffer of messages is sent to `libpq` via a function call. As part of the return, Postgres will receive a result back, as well as metadata information about the result status to the invoker. 
+After encoding the request, the message gets placed into an outbound buffer. This buffer serves to minimize the number of round-trip communications that need to occur. Once the buffer is full or is being flushed[^1], the current buffer of messages is sent to `libpq` via a function call. As part of the return, Postgres will receive a result back, as well as metadata information about the result status to the invoker. 
 
 There are [quite a few](https://github.com/postgres/postgres/blob/master/src/interfaces/libpq/libpq-fe.h#L95-L115) statuses a result could have:
 ```	c
