@@ -12,7 +12,7 @@ toc: true
 # Background
 I recently had a question come up as to why the COPY command is more performant than performing a series of INSERTs. I'd known that COPY is [much more performant](https://www.cybertec-postgresql.com/en/bulk-load-performance-in-postgresql/) than inserting records via `INSERT INTO`. While trying to come up with an answer, I realized that I didn't know how COPY is implemented. This meant that any attempt to come up with an answer was in vain. By writing this post, I hope to narrow that knowledge gap and help myself get a deeper understanding of my favorite database. 
 
-This post will focus primarily on the Postgres implementation when performing a `COPY FROM` command and will stop short of diving into the internals of `libpq` . This post will also serve as a primer for understanding how `INSERT INTO` works, but I won't go into much detail in this post. 
+This post will focus primarily on the Postgres implementation when performing a `COPY FROM` command and will stop short of diving into the internals of `libpq` . This post will also serve as a primer for understanding how `INSERT INTO` works, but I won't go into much detail. 
 
 Previously I had thought that COPY was somehow special, perhaps opening a direct file connection to the underlying data table to achieve the speed COPY does - but that's not the case. As we'll see, COPY loads in data and utilizes a special code path to minimizes the amount of overhead to transmit data to the `libpq` backend. One of the best parts of Postgres (or open source in general) is that we can look at the source code & documentation, so we'll be diving right into some source code. Let's get started.
 
@@ -58,9 +58,9 @@ typedef enum
 ```
 Notably for our purposes, when a `COPY ... FROM STDIN` command is sent, `libpq` will return a result status of `PGRES_COPY_IN`[^2]. Postgres will [check for this status](https://github.com/postgres/postgres/blob/master/src/bin/psql/common.c#L1540-L1541) and [invoke](https://github.com/postgres/postgres/blob/master/src/bin/psql/common.c#L1593) `HandleCopyResult` to handle this scenario. From here, `HandleCopyResult` gathers the appropriate stream to copy data from, and passes this to `handleCopyIn`, which is where the interesting work happens. 
 
-# How `handleCopyIn` writing data 
+# How does `handleCopyIn` work?  
 
-There's a lot of code to break down in `handleCopyIn`. 
+`handleCopyIn` is a workhorse responsible. It is responsible consuming the `FILE` stream, streaming the data to `libpq`, and finalizing the COPY. There's a lot of code to break down in `handleCopyIn`. 
 
 <video muted autoplay loop style="width:100%">
     <source src="/assets/img/what-actually-happens-when-you-run-copy-in-postgres/code.mp4" type="video/mp4">
