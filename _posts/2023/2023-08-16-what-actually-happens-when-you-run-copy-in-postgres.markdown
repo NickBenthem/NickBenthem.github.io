@@ -60,8 +60,8 @@ Many database systems with SQL-esque dialects also support some form of `COPY`, 
 ```python
 users = [(1, "John Doe", "john.doe@example.com"), (2, "Jane Smith", "jane.smith@example.com")]
 with cursor.copy("COPY users (id, name, email) FROM STDIN") as copy:
-	for user in users:
-		copy.write_row(user)
+ for user in users:
+  copy.write_row(user)
 ```
 
 However, for the purposes of our discussion, I'll be limiting myself to the `COPY` FROM command in Postgres which uses the `FILE` type in C. 
@@ -132,177 +132,177 @@ handleCopyIn(PGconn *conn, FILE *copystream, bool isbinary, PGresult **res)
 bool
 handleCopyIn(PGconn *conn, FILE *copystream, bool isbinary, PGresult **res)
 {
-	bool		OK;
-	char		buf[COPYBUFSIZ];
-	bool		showprompt;
+ bool		OK;
+ char		buf[COPYBUFSIZ];
+ bool		showprompt;
 
-	/*
-	* Establish longjmp destination for exiting from wait-for-input. (This is
-	* only effective while sigint_interrupt_enabled is TRUE.)
-	*/
-	if (sigsetjmp(sigint_interrupt_jmp, 1) != 0)
-	{
-		/* got here with longjmp */
+ /*
+ * Establish longjmp destination for exiting from wait-for-input. (This is
+ * only effective while sigint_interrupt_enabled is TRUE.)
+ */
+ if (sigsetjmp(sigint_interrupt_jmp, 1) != 0)
+ {
+  /* got here with longjmp */
 
-		/* Terminate data transfer */
-		PQputCopyEnd(conn,
-					(PQprotocolVersion(conn) < 3) ? NULL :
-					_("canceled by user"));
+  /* Terminate data transfer */
+  PQputCopyEnd(conn,
+     (PQprotocolVersion(conn) < 3) ? NULL :
+     _("canceled by user"));
 
-		OK = false;
-		goto copyin_cleanup;
-	}
+  OK = false;
+  goto copyin_cleanup;
+ }
 
-	/* Prompt if interactive input */
-	if (isatty(fileno(copystream)))
-	{
-		showprompt = true;
-		if (!pset.quiet)
-			puts(_("Enter data to be copied followed by a newline.\n"
-				"End with a backslash and a period on a line by itself, or an EOF signal."));
-	}
-	else
-		showprompt = false;
+ /* Prompt if interactive input */
+ if (isatty(fileno(copystream)))
+ {
+  showprompt = true;
+  if (!pset.quiet)
+   puts(_("Enter data to be copied followed by a newline.\n"
+    "End with a backslash and a period on a line by itself, or an EOF signal."));
+ }
+ else
+  showprompt = false;
 
-	OK = true;
+ OK = true;
 
-	if (isbinary)
-	{
-		/* interactive input probably silly, but give one prompt anyway */
-		if (showprompt)
-		{
-			const char *prompt = get_prompt(PROMPT_COPY, NULL);
+ if (isbinary)
+ {
+  /* interactive input probably silly, but give one prompt anyway */
+  if (showprompt)
+  {
+   const char *prompt = get_prompt(PROMPT_COPY, NULL);
 
-			fputs(prompt, stdout);
-			fflush(stdout);
-		}
+   fputs(prompt, stdout);
+   fflush(stdout);
+  }
 
-		for (;;)
-		{
-			int			buflen;
+  for (;;)
+  {
+   int			buflen;
 
-			/* enable longjmp while waiting for input */
-			sigint_interrupt_enabled = true;
+   /* enable longjmp while waiting for input */
+   sigint_interrupt_enabled = true;
 
-			buflen = fread(buf, 1, COPYBUFSIZ, copystream);
+   buflen = fread(buf, 1, COPYBUFSIZ, copystream);
 
-			sigint_interrupt_enabled = false;
+   sigint_interrupt_enabled = false;
 
-			if (buflen <= 0)
-				break;
+   if (buflen <= 0)
+    break;
 
-			if (PQputCopyData(conn, buf, buflen) <= 0)
-			{
-				OK = false;
-				break;
-			}
-		}
-	}
-	else
-	{
-		bool		copydone = false;
-		int			buflen;
-		bool		at_line_begin = true;
+   if (PQputCopyData(conn, buf, buflen) <= 0)
+   {
+    OK = false;
+    break;
+   }
+  }
+ }
+ else
+ {
+  bool		copydone = false;
+  int			buflen;
+  bool		at_line_begin = true;
 
-		/*
-		* In text mode, we have to read the input one line at a time, so that
-		* we can stop reading at the EOF marker (\.).  We mustn't read beyond
-		* the EOF marker, because if the data was inlined in a SQL script, we
-		* would eat up the commands after the EOF marker.
-		*/
-		buflen = 0;
-		while (!copydone)
-		{
-			char	   *fgresult;
+  /*
+  * In text mode, we have to read the input one line at a time, so that
+  * we can stop reading at the EOF marker (\.).  We mustn't read beyond
+  * the EOF marker, because if the data was inlined in a SQL script, we
+  * would eat up the commands after the EOF marker.
+  */
+  buflen = 0;
+  while (!copydone)
+  {
+   char	   *fgresult;
 
-			if (at_line_begin && showprompt)
-			{
-				const char *prompt = get_prompt(PROMPT_COPY, NULL);
+   if (at_line_begin && showprompt)
+   {
+    const char *prompt = get_prompt(PROMPT_COPY, NULL);
 
-				fputs(prompt, stdout);
-				fflush(stdout);
-			}
+    fputs(prompt, stdout);
+    fflush(stdout);
+   }
 
-			/* enable longjmp while waiting for input */
-			sigint_interrupt_enabled = true;
+   /* enable longjmp while waiting for input */
+   sigint_interrupt_enabled = true;
 
-			fgresult = fgets(&buf[buflen], COPYBUFSIZ - buflen, copystream);
+   fgresult = fgets(&buf[buflen], COPYBUFSIZ - buflen, copystream);
 
-			sigint_interrupt_enabled = false;
+   sigint_interrupt_enabled = false;
 
-			if (!fgresult)
-				copydone = true;
-			else
-			{
-				int			linelen;
+   if (!fgresult)
+    copydone = true;
+   else
+   {
+    int			linelen;
 
-				linelen = strlen(fgresult);
-				buflen += linelen;
+    linelen = strlen(fgresult);
+    buflen += linelen;
 
-				/* current line is done? */
-				if (buf[buflen - 1] == '\n')
-				{
-					/* check for EOF marker, but not on a partial line */
-					if (at_line_begin)
-					{
-						/*
-						* This code erroneously assumes '\.' on a line alone
-						* inside a quoted CSV string terminates the \copy.
-						* https://www.postgresql.org/message-id/E1TdNVQ-0001ju-GO@wrigleys.postgresql.org
-						*/
-						if ((linelen == 3 && memcmp(fgresult, "\\.\n", 3) == 0) ||
-							(linelen == 4 && memcmp(fgresult, "\\.\r\n", 4) == 0))
-						{
-							copydone = true;
-						}
-					}
+    /* current line is done? */
+    if (buf[buflen - 1] == '\n')
+    {
+     /* check for EOF marker, but not on a partial line */
+     if (at_line_begin)
+     {
+      /*
+      * This code erroneously assumes '\.' on a line alone
+      * inside a quoted CSV string terminates the \copy.
+      * https://www.postgresql.org/message-id/E1TdNVQ-0001ju-GO@wrigleys.postgresql.org
+      */
+      if ((linelen == 3 && memcmp(fgresult, "\\.\n", 3) == 0) ||
+       (linelen == 4 && memcmp(fgresult, "\\.\r\n", 4) == 0))
+      {
+       copydone = true;
+      }
+     }
 
-					if (copystream == pset.cur_cmd_source)
-					{
-						pset.lineno++;
-						pset.stmt_lineno++;
-					}
-					at_line_begin = true;
-				}
-				else
-					at_line_begin = false;
-			}
+     if (copystream == pset.cur_cmd_source)
+     {
+      pset.lineno++;
+      pset.stmt_lineno++;
+     }
+     at_line_begin = true;
+    }
+    else
+     at_line_begin = false;
+   }
 
-			/*
-			* If the buffer is full, or we've reached the EOF, flush it.
-			*
-			* Make sure there's always space for four more bytes in the
-			* buffer, plus a NUL terminator.  That way, an EOF marker is
-			* never split across two fgets() calls, which simplifies the
-			* logic.
-			*/
-			if (buflen >= COPYBUFSIZ - 5 || (copydone && buflen > 0))
-			{
-				if (PQputCopyData(conn, buf, buflen) <= 0)
-				{
-					OK = false;
-					break;
-				}
+   /*
+   * If the buffer is full, or we've reached the EOF, flush it.
+   *
+   * Make sure there's always space for four more bytes in the
+   * buffer, plus a NUL terminator.  That way, an EOF marker is
+   * never split across two fgets() calls, which simplifies the
+   * logic.
+   */
+   if (buflen >= COPYBUFSIZ - 5 || (copydone && buflen > 0))
+   {
+    if (PQputCopyData(conn, buf, buflen) <= 0)
+    {
+     OK = false;
+     break;
+    }
 
-				buflen = 0;
-			}
-		}
-	}
+    buflen = 0;
+   }
+  }
+ }
 
-	/* Check for read error */
-	if (ferror(copystream))
-		OK = false;
+ /* Check for read error */
+ if (ferror(copystream))
+  OK = false;
 
-	/*
-	* Terminate data transfer.  We can't send an error message if we're using
-	* protocol version 2.  (libpq no longer supports protocol version 2, but
-	* keep the version checks just in case you're using a pre-v14 libpq.so at
-	* runtime)
-	*/
-	if (PQputCopyEnd(conn,
-					(OK || PQprotocolVersion(conn) < 3) ? NULL :
-					_("aborted because of read failure")) <= 0)
-		OK = false;
+ /*
+ * Terminate data transfer.  We can't send an error message if we're using
+ * protocol version 2.  (libpq no longer supports protocol version 2, but
+ * keep the version checks just in case you're using a pre-v14 libpq.so at
+ * runtime)
+ */
+ if (PQputCopyEnd(conn,
+     (OK || PQprotocolVersion(conn) < 3) ? NULL :
+     _("aborted because of read failure")) <= 0)
+  OK = false;
 }
 {% endhighlight %}
 </details>
@@ -312,19 +312,19 @@ handleCopyIn(PGconn *conn, FILE *copystream, bool isbinary, PGresult **res)
 Let's go through the above function `handleCopyIn` at a high level. The general process the function follows is:
 
 - **Instantiate `buf` and `buflen` as a buffer.**
-	- `buf` is an array which can store at most 8192 bytes of data.
-	- `buflen` represents the current amount of data we've loaded into `buf`.
-	-  We'll continuously write data to `buf`, and flush[^1] the data from `buf` as we go. 
+ - `buf` is an array which can store at most 8192 bytes of data.
+ - `buflen` represents the current amount of data we've loaded into `buf`.
+ -  We'll continuously write data to `buf`, and flush[^1] the data from `buf` as we go. 
 - **Read data into our buffer via `fgets`.**
-	- Instantiate `fgresult` to check if we're at the end of our stream. `fgresult` will be either `&buf[buflen]`, if `fgets` is successful, or null if there's an error or end of file.
-	- We load data from the `copystream` IO and store the results into `buf`.
-	- Ensure we don't overflow our buffer by only reading in `COPYBUFSIZ - buflen` characters at a time.
+ - Instantiate `fgresult` to check if we're at the end of our stream. `fgresult` will be either `&buf[buflen]`, if `fgets` is successful, or null if there's an error or end of file.
+ - We load data from the `copystream` IO and store the results into `buf`.
+ - Ensure we don't overflow our buffer by only reading in `COPYBUFSIZ - buflen` characters at a time.
 - **Increment our buffer and see if we're at the end of a line.**
-	- We increment our buffers length by the number of characters we just wrote in.
-	- There's edge case checking for end of file (EOF) characters.
+ - We increment our buffers length by the number of characters we just wrote in.
+ - There's edge case checking for end of file (EOF) characters.
 - **Flush[^1] our buffer if we have enough data, or are done with the file.** 
-	- We do this by sending the current connection, the buffer, and the length of data in the buffer (`buflen`) to `PQputCopyData``.
-	- `PQputCopyData` returns 1 if successful, 0 if data couldn't be sent, or -1 if an error occurs. 
+ - We do this by sending the current connection, the buffer, and the length of data in the buffer (`buflen`) to `PQputCopyData``.
+ - `PQputCopyData` returns 1 if successful, 0 if data couldn't be sent, or -1 if an error occurs. 
 - **Repeat until done.**
 - **Finalize transmission by calling `PQputCopyEnd`**
 
@@ -343,25 +343,25 @@ You can see this behavior in the [code from PQputCopyData](https://github.com/po
 ``` c
 if (nbytes > 0)
 {
-	/*
-		* Try to flush any previously sent data in preference to growing the
-		* output buffer.  If we can't enlarge the buffer enough to hold the
-		* data, return 0 in the nonblock case, else hard error. (For
-		* simplicity, always assume 5 bytes of overhead.)
-		*/
-	if ((conn->outBufSize - conn->outCount - 5) < nbytes)
-	{
-		if (pqFlush(conn) < 0)
-			return -1;
-		if (pqCheckOutBufferSpace(conn->outCount + 5 + (size_t) nbytes,
-									conn))
-			return pqIsnonblocking(conn) ? 0 : -1;
-	}
-	/* Send the data (too simple to delegate to fe-protocol files) */
-	if (pqPutMsgStart('d', conn) < 0 ||
-		pqPutnchar(buffer, nbytes, conn) < 0 ||
-		pqPutMsgEnd(conn) < 0)
-		return -1;
+ /*
+  * Try to flush any previously sent data in preference to growing the
+  * output buffer.  If we can't enlarge the buffer enough to hold the
+  * data, return 0 in the nonblock case, else hard error. (For
+  * simplicity, always assume 5 bytes of overhead.)
+  */
+ if ((conn->outBufSize - conn->outCount - 5) < nbytes)
+ {
+  if (pqFlush(conn) < 0)
+   return -1;
+  if (pqCheckOutBufferSpace(conn->outCount + 5 + (size_t) nbytes,
+         conn))
+   return pqIsnonblocking(conn) ? 0 : -1;
+ }
+ /* Send the data (too simple to delegate to fe-protocol files) */
+ if (pqPutMsgStart('d', conn) < 0 ||
+  pqPutnchar(buffer, nbytes, conn) < 0 ||
+  pqPutMsgEnd(conn) < 0)
+  return -1;
 }
 ```
 
@@ -370,18 +370,18 @@ An important implementation note is that we never perform additional processing 
 ```c
 if (errormsg)
 {
-	/* Send COPY FAIL */
-	if (pqPutMsgStart('f', conn) < 0 ||
-		pqPuts(errormsg, conn) < 0 ||
-		pqPutMsgEnd(conn) < 0)
-		return -1;
+ /* Send COPY FAIL */
+ if (pqPutMsgStart('f', conn) < 0 ||
+  pqPuts(errormsg, conn) < 0 ||
+  pqPutMsgEnd(conn) < 0)
+  return -1;
 }
 else
 {
-	/* Send COPY DONE */
-	if (pqPutMsgStart('c', conn) < 0 ||
-		pqPutMsgEnd(conn) < 0)
-		return -1;
+ /* Send COPY DONE */
+ if (pqPutMsgStart('c', conn) < 0 ||
+  pqPutMsgEnd(conn) < 0)
+  return -1;
 }
 ```
 
