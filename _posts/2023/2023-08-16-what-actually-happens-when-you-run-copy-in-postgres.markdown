@@ -53,9 +53,9 @@ COPY users(id, name, email)
 FROM 'data.csv' DELIMITER ',' CSV;
 ```
 
-When bulk loading large amounts of data, `COPY` is [significantly faster](https://www.cybertec-postgresql.com/en/bulk-load-performance-in-postgresql/) than any other method. `COPY` allows you to efficiently migrate data into SQL.
+When bulk loading large amounts of data, `COPY` is [significantly faster](https://www.cybertec-postgresql.com/en/bulk-load-performance-in-postgresql/) than any other method. Generally around ~250k rows of data is where the speed of `INSERT INTO` becomes too slow and I resort to writing a `COPY` command.
 
-Many database systems that implement a SQL dialect also support some form of `COPY`, including [Redshift](https://docs.aws.amazon.com/redshift/latest/dg/r_COPY.html), [Snowflake](https://docs.snowflake.com/en/sql-reference/sql/copy-into-table),  [CockroachDB](https://www.cockroachlabs.com/docs/stable/copy-from), [MySQL (via LOAD DATA)](https://dev.mysql.com/doc/refman/8.0/en/load-data.html), and plenty of others. Certain systems like Snowflake allow you to load not just from local storage, but from Amazon S3, Google Cloud Storage, or Microsoft Azure. Database drivers (like Psycopg2 & Pyscopg3) [implement support for COPY](https://www.psycopg.org/psycopg3/docs/basic/copy.html):
+Many database systems with SQL-esque dialects also support some form of `COPY`, including [Redshift](https://docs.aws.amazon.com/redshift/latest/dg/r_COPY.html), [Snowflake](https://docs.snowflake.com/en/sql-reference/sql/copy-into-table),  [CockroachDB](https://www.cockroachlabs.com/docs/stable/copy-from), [MySQL (via LOAD DATA)](https://dev.mysql.com/doc/refman/8.0/en/load-data.html), and plenty of others. Certain systems like Snowflake allow you to load not just from a filepath, but also from Amazon S3, Google Cloud Storage, or Microsoft Azure. Database drivers (like Psycopg2 & Pyscopg3) [implement support for COPY](https://www.psycopg.org/psycopg3/docs/basic/copy.html) like so:
 
 ```python
 users = [(1, "John Doe", "john.doe@example.com"), (2, "Jane Smith", "jane.smith@example.com")]
@@ -67,7 +67,7 @@ with cursor.copy("COPY users (id, name, email) FROM STDIN") as copy:
 However, for the purposes of our discussion, I'll be limiting myself to the `COPY` FROM command in Postgres which uses the `FILE` type in C. 
 
 
-# What happens when a Postgres query is executed? 
+# How Postgres transfers data to `libq` 
 When executing a valid SQL query command (i.e., `COPY`, `SELECT ... FROM`, `INSERT INTO ...`), Postgres will rely on sending the command to `libpq`, the API backend for Postgres. To effectively communicate, Postgres will encode the command according to the message protocol that `libpq` uses. There are [a variety of different message types and formats](https://www.postgresql.org/docs/current/protocol-message-formats.html) supported by `libpq`. For the case of a SQL query that the user enters, the payload will consist of the following elements:
 
 - Byte1('Q') (Identifies the message as a simple query.)
@@ -107,11 +107,11 @@ typedef enum
                                * earlier in a pipeline */
 } ExecStatusType;
 ```
-Notably for our purposes, when a `COPY ... FROM STDIN` command is sent, `libpq` will return a result status of `PGRES_COPY_IN`[^2]. Postgres will [check for this status](https://github.com/postgres/postgres/blob/master/src/bin/psql/common.c#L1540-L1541) and [invoke](https://github.com/postgres/postgres/blob/master/src/bin/psql/common.c#L1593) `HandleCopyResult` to handle this scenario. From here, `HandleCopyResult` gathers the appropriate stream to `COPY` data from, and passes this to `handleCopyIn`, which is where the interesting work happens. 
+When a `COPY ... FROM STDIN` command is sent, `libpq` will return a result status of `PGRES_COPY_IN`[^2]. Postgres will [check for this status](https://github.com/postgres/postgres/blob/master/src/bin/psql/common.c#L1540-L1541), [invoke](https://github.com/postgres/postgres/blob/master/src/bin/psql/common.c#L1593) `HandleCopyResult` and suquently invoke `handleCopyIn`, which is where the interesting work happens. 
 
 # How does `handleCopyIn` work?  
 
-`handleCopyIn` is a workhorse responsible. It is responsible consuming the `FILE` stream, streaming the data to `libpq`, and finalizing the COPY. There's a lot of code to break down in `handleCopyIn`. 
+`handleCopyIn` is a workhorse responsible for consuming the `FILE` stream, streaming the data to `libpq`, and finalizing the COPY. There's a lot of code to break down in `handleCopyIn`. 
 
 <video muted autoplay loop style="width:100%">
     <source src="/assets/img/what-actually-happens-when-you-run-copy-in-postgres/code.mp4" type="video/mp4">
