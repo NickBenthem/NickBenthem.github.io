@@ -115,7 +115,7 @@ When a `COPY ... FROM STDIN` command is sent, `libpq` will return a result statu
 <img src="/assets/img/what-actually-happens-when-you-run-copy-in-postgres/code.gif">
 <figcaption style="text-align:center">handleCopyIn's source code</figcaption>
 
-I suggest opening up the [code in GitHub](https://github.com/postgres/postgres/blob/master/src/bin/psql/copy.c#L511) (or cloning the repository and using your IDE) for the next section. For our purposes, we'll focus our attention on [L592-L668](https://github.com/postgres/postgres/blob/master/src/bin/psql/copy.c#L592-L668). There's quite a bit of handling for scenarios such as if the input is interactive, if we're copying in binary, or if there's a signal interrupt. To aid the reader, I've copied the pertinent section behind this code block (though I suggest cloning and reading along, you get better highlighting),
+ For our purposes, we'll focus our attention on [L592-L668](https://github.com/postgres/postgres/blob/master/src/bin/psql/copy.c#L592-L668). There's quite a bit of handling for scenarios such as if the input is interactive, if we're copying in binary, or if there's a signal interrupt. To aid the reader, I've copied the pertinent section behind this code block (though I suggest cloning and reading along, you get better highlighting),
 
 <details>
 <summary>
@@ -129,177 +129,117 @@ handleCopyIn(PGconn *conn, FILE *copystream, bool isbinary, PGresult **res)
 bool
 handleCopyIn(PGconn *conn, FILE *copystream, bool isbinary, PGresult **res)
 {
-    bool		OK;
-    char		buf[COPYBUFSIZ];
-    bool		showprompt;
+  bool		OK;
+  char		buf[COPYBUFSIZ];
+  bool		showprompt;
 
-    /*
-     * Establish longjmp destination for exiting from wait-for-input. (This is
-     * only effective while sigint_interrupt_enabled is TRUE.)
-     */
-    if (sigsetjmp(sigint_interrupt_jmp, 1) != 0)
-    {
-        /* got here with longjmp */
+  /*
+    * Nick Benthem Note - I've truncated the beginning half of the function 
+    * to focus on the core COPY mechanic.
+    */
 
-        /* Terminate data transfer */
-        PQputCopyEnd(conn,
-                     (PQprotocolVersion(conn) < 3) ? NULL :
-                     _("canceled by user"));
+  bool		copydone = false;
+  int			buflen;
+  bool		at_line_begin = true;
 
-        OK = false;
-        goto copyin_cleanup;
-    }
+  /*
+    * In text mode, we have to read the input one line at a time, so that
+    * we can stop reading at the EOF marker (\.).  We mustn't read beyond
+    * the EOF marker, because if the data was inlined in a SQL script, we
+    * would eat up the commands after the EOF marker.
+    */
+  buflen = 0;
+  while (!copydone)
+  {
+      char	   *fgresult;
 
-    /* Prompt if interactive input */
-    if (isatty(fileno(copystream)))
-    {
-        showprompt = true;
-        if (!pset.quiet)
-            puts(_("Enter data to be copied followed by a newline.\n"
-                   "End with a backslash and a period on a line by itself, or an EOF signal."));
-    }
-    else
-        showprompt = false;
+      if (at_line_begin && showprompt)
+      {
+          const char *prompt = get_prompt(PROMPT_COPY, NULL);
 
-    OK = true;
+          fputs(prompt, stdout);
+          fflush(stdout);
+      }
 
-    if (isbinary)
-    {
-        /* interactive input probably silly, but give one prompt anyway */
-        if (showprompt)
-        {
-            const char *prompt = get_prompt(PROMPT_COPY, NULL);
+      /* enable longjmp while waiting for input */
+      sigint_interrupt_enabled = true;
 
-            fputs(prompt, stdout);
-            fflush(stdout);
-        }
+      fgresult = fgets(&buf[buflen], COPYBUFSIZ - buflen, copystream);
 
-        for (;;)
-        {
-            int			buflen;
+      sigint_interrupt_enabled = false;
 
-            /* enable longjmp while waiting for input */
-            sigint_interrupt_enabled = true;
+      if (!fgresult)
+          copydone = true;
+      else
+      {
+          int			linelen;
 
-            buflen = fread(buf, 1, COPYBUFSIZ, copystream);
+          linelen = strlen(fgresult);
+          buflen += linelen;
 
-            sigint_interrupt_enabled = false;
+          /* current line is done? */
+          if (buf[buflen - 1] == '\n')
+          {
+              /* check for EOF marker, but not on a partial line */
+              if (at_line_begin)
+              {
+                  /*
+                    * This code erroneously assumes '\.' on a line alone
+                    * inside a quoted CSV string terminates the \copy.
+                    * https://www.postgresql.org/message-id/E1TdNVQ-0001ju-GO@wrigleys.postgresql.org
+                    */
+                  if ((linelen == 3 && memcmp(fgresult, "\\.\n", 3) == 0) ||
+                      (linelen == 4 && memcmp(fgresult, "\\.\r\n", 4) == 0))
+                  {
+                      copydone = true;
+                  }
+              }
 
-            if (buflen <= 0)
-                break;
+              if (copystream == pset.cur_cmd_source)
+              {
+                  pset.lineno++;
+                  pset.stmt_lineno++;
+              }
+              at_line_begin = true;
+          }
+          else
+              at_line_begin = false;
+      }
 
-            if (PQputCopyData(conn, buf, buflen) <= 0)
-            {
-                OK = false;
-                break;
-            }
-        }
-    }
-    else
-    {
-        bool		copydone = false;
-        int			buflen;
-        bool		at_line_begin = true;
+      /*
+        * If the buffer is full, or we've reached the EOF, flush it.
+        *
+        * Make sure there's always space for four more bytes in the
+        * buffer, plus a NUL terminator.  That way, an EOF marker is
+        * never split across two fgets() calls, which simplifies the
+        * logic.
+        */
+      if (buflen >= COPYBUFSIZ - 5 || (copydone && buflen > 0))
+      {
+          if (PQputCopyData(conn, buf, buflen) <= 0)
+          {
+              OK = false;
+              break;
+          }
 
-        /*
-         * In text mode, we have to read the input one line at a time, so that
-         * we can stop reading at the EOF marker (\.).  We mustn't read beyond
-         * the EOF marker, because if the data was inlined in a SQL script, we
-         * would eat up the commands after the EOF marker.
-         */
-        buflen = 0;
-        while (!copydone)
-        {
-            char	   *fgresult;
+          buflen = 0;
+      }
+  }
 
-            if (at_line_begin && showprompt)
-            {
-                const char *prompt = get_prompt(PROMPT_COPY, NULL);
+/* Check for read error */
+if (ferror(copystream))
+    OK = false;
 
-                fputs(prompt, stdout);
-                fflush(stdout);
-            }
-
-            /* enable longjmp while waiting for input */
-            sigint_interrupt_enabled = true;
-
-            fgresult = fgets(&buf[buflen], COPYBUFSIZ - buflen, copystream);
-
-            sigint_interrupt_enabled = false;
-
-            if (!fgresult)
-                copydone = true;
-            else
-            {
-                int			linelen;
-
-                linelen = strlen(fgresult);
-                buflen += linelen;
-
-                /* current line is done? */
-                if (buf[buflen - 1] == '\n')
-                {
-                    /* check for EOF marker, but not on a partial line */
-                    if (at_line_begin)
-                    {
-                        /*
-                         * This code erroneously assumes '\.' on a line alone
-                         * inside a quoted CSV string terminates the \copy.
-                         * https://www.postgresql.org/message-id/E1TdNVQ-0001ju-GO@wrigleys.postgresql.org
-                         */
-                        if ((linelen == 3 && memcmp(fgresult, "\\.\n", 3) == 0) ||
-                            (linelen == 4 && memcmp(fgresult, "\\.\r\n", 4) == 0))
-                        {
-                            copydone = true;
-                        }
-                    }
-
-                    if (copystream == pset.cur_cmd_source)
-                    {
-                        pset.lineno++;
-                        pset.stmt_lineno++;
-                    }
-                    at_line_begin = true;
-                }
-                else
-                    at_line_begin = false;
-            }
-
-            /*
-             * If the buffer is full, or we've reached the EOF, flush it.
-             *
-             * Make sure there's always space for four more bytes in the
-             * buffer, plus a NUL terminator.  That way, an EOF marker is
-             * never split across two fgets() calls, which simplifies the
-             * logic.
-             */
-            if (buflen >= COPYBUFSIZ - 5 || (copydone && buflen > 0))
-            {
-                if (PQputCopyData(conn, buf, buflen) <= 0)
-                {
-                    OK = false;
-                    break;
-                }
-
-                buflen = 0;
-            }
-        }
-    }
-
-    /* Check for read error */
-    if (ferror(copystream))
-        OK = false;
-
-    /*
-     * Terminate data transfer.  We can't send an error message if we're using
-     * protocol version 2.  (libpq no longer supports protocol version 2, but
-     * keep the version checks just in case you're using a pre-v14 libpq.so at
-     * runtime)
-     */
-    if (PQputCopyEnd(conn,
-                     (OK || PQprotocolVersion(conn) < 3) ? NULL :
-                     _("aborted because of read failure")) <= 0)
-        OK = false;
+/*
+  * Terminate data transfer.  We can't send an error message if we're using
+  * protocol version 2.  (libpq no longer supports protocol version 2, but
+  * keep the version checks just in case you're using a pre-v14 libpq.so at
+  * runtime)
+  */
+if (PQputCopyEnd(conn,
+                  (OK || PQprotocolVersion(conn) < 3) ? NULL :
+                  _("aborted because of read failure")) <= 0)
+    OK = false;
 
 }
 {% endhighlight %}
