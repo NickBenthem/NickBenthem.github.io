@@ -21,7 +21,7 @@ Postgres provides two primary ways of inserting data into a table:
 - `INSERT INTO` and,
 - `COPY`. 
 
-To insert data using `INSERT INTO`, we can imagine we have a `users` table with `id`,`name`, and `email`:
+To insert data using `INSERT INTO`, imagine we have a `users` table with `id`,`name`, and `email`:
 
 ```sql
 CREATE TABLE users (
