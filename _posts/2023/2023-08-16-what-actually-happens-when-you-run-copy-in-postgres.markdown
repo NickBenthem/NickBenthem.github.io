@@ -1,7 +1,7 @@
 ---
 layout: post
 title: What actually happens when you COPY in Postgres?
-date: 2023-08-17 09:20
+date: 2023-08-17 07:20
 tags: Postgres
 goal: Discuss how COPY functions, diving into Postgres source code.
 audience: You should be comfortable writing raw SQL.
