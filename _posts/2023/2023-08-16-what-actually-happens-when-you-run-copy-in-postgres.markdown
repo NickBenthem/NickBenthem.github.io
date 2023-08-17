@@ -281,25 +281,25 @@ You can see this behavior in the [code from PQputCopyData](https://github.com/po
 ``` c
 if (nbytes > 0)
 {
-    /*
-        * Try to flush any previously sent data in preference to growing the
-        * output buffer.  If we can't enlarge the buffer enough to hold the
-        * data, return 0 in the nonblock case, else hard error. (For
-        * simplicity, always assume 5 bytes of overhead.)
-        */
-    if ((conn->outBufSize - conn->outCount - 5) < nbytes)
-    {
-        if (pqFlush(conn) < 0)
-            return -1;
-        if (pqCheckOutBufferSpace(conn->outCount + 5 + (size_t) nbytes,
-                                    conn))
-            return pqIsnonblocking(conn) ? 0 : -1;
-    }
-    /* Send the data (too simple to delegate to fe-protocol files) */
-    if (pqPutMsgStart('d', conn) < 0 ||
-        pqPutnchar(buffer, nbytes, conn) < 0 ||
-        pqPutMsgEnd(conn) < 0)
-        return -1;
+  /*
+      * Try to flush any previously sent data in preference to growing the
+      * output buffer.  If we can't enlarge the buffer enough to hold the
+      * data, return 0 in the nonblock case, else hard error. (For
+      * simplicity, always assume 5 bytes of overhead.)
+      */
+  if ((conn->outBufSize - conn->outCount - 5) < nbytes)
+  {
+      if (pqFlush(conn) < 0)
+          return -1;
+      if (pqCheckOutBufferSpace(conn->outCount + 5 + (size_t) nbytes,
+                                  conn))
+          return pqIsnonblocking(conn) ? 0 : -1;
+  }
+  /* Send the data (too simple to delegate to fe-protocol files) */
+  if (pqPutMsgStart('d', conn) < 0 ||
+      pqPutnchar(buffer, nbytes, conn) < 0 ||
+      pqPutMsgEnd(conn) < 0)
+      return -1;
 }
 ```
 
