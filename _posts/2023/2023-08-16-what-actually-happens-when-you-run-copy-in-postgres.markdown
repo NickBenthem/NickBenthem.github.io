@@ -8,9 +8,9 @@ audience: You should be comfortable writing raw SQL.
 toc: true
 ---
 
-
 # Background
-I recently had someone ask me why the `COPY` command is more performant than `INSERT INTO`. I'd known that `COPY` is [much more performant](https://www.cybertec-postgresql.com/en/bulk-load-performance-in-postgresql/) than inserting records via `INSERT INTO`. While trying to come up with an answer, I realized that I was starting from a deficient: I didn't know how `COPY` is coded. Any attempt to come up with an answer was at best a guess. By writing this post, I hope to narrow that knowledge gap and help myself get a deeper understanding of my favorite database. 
+I recently had someone ask me why the `COPY` command is more performant than `INSERT INTO`. While trying to come up with an answer, I realized that I was starting from a deficient: I didn't know how `COPY` is coded. Any attempt to come up with an answer was at best a guess. Through this post, I hope to narrow that knowledge gap and help myself and others get a deeper understanding of my favorite database.  
+
 
 This post will focus primarily on the Postgres implementation when performing a `COPY` command and will stop short of diving into the internals of Postgres' API layer, `libpq`.  I will start by going over what the `COPY` command is, how Postgres packages data to send to `libpq`, and dive into the C function in Postgres that implements the data transfer. This post will also serve as a background primer for understanding how `INSERT INTO` works, but only through examining how queries are sent to Postgres.
 
