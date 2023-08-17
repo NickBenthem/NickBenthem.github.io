@@ -328,11 +328,11 @@ Let's go through the above function `handleCopyIn` at a high level. The general 
 
 # How do `PQputCopyData` and `PQputCopyEnd` work?
 
-In the previous function `handleCopyIn`, we're continuously iterating through the `FILE` input. `PQputCopyData` handles the flushing[^1] of the buffer while ensuring that messages are encoded and sent out to `libpq`. As [mentioned previously](#what-happens-when-a-postgres-query-is-executed), to communicate with `libpq` we must construct a message. The `COPY` functionality has a unique `d` [(https://www.postgresql.org/docs/current/protocol-message-formats.html)](message type) that `libpq` uses to receive `COPY` data from Postgres. To create a CopyData message, the message needs to have the following elements:
+In the previous function `handleCopyIn`, we're continuously iterating through the `FILE` input. `PQputCopyData` handles the flushing[^1] of the buffer while ensuring that messages are encoded and sent out to `libpq`. As [mentioned previously](#what-happens-when-a-postgres-query-is-executed), to communicate with `libpq` we must construct a message. The `COPY` functionality has a unique `d` [message type](https://www.postgresql.org/docs/current/protocol-message-formats.html) that `libpq` uses to receive `COPY` data from Postgres. To create a CopyData message, the message needs to have the following elements:
 
 - Byte1('d') (Identifies the message as COPY data.)
 - Int32 (Length of message contents in bytes, including self.)
-- Byte**n** (Data that forms part of a COPY data stream). 
+- Byte [**n**] (Data that forms part of a COPY data stream). 
 
 This message type looks very similar to the `Q` message type we encountered when we sent a `SELECT 1;`, but rather than send the string of a query, we send the data we've read from the `FILE`.
 
