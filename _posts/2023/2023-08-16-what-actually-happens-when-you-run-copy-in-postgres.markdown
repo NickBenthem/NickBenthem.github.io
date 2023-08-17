@@ -112,12 +112,7 @@ When a `COPY ... FROM STDIN` command is sent, `libpq` will return a result statu
 
 `handleCopyIn` is a workhorse responsible for consuming the `FILE` stream, streaming the data to `libpq`, and finalizing the COPY. There's a lot of code to break down in `handleCopyIn`. 
 
-<video muted autoplay loop style="width:100%">
-  <!-- for safari or iOS or anything Apple -->
-  <source src="/assets/img/what-actually-happens-when-you-run-copy-in-postgres/code.m4v" type="video/x-m4v">
-  <!-- for chrome, firefox, android and remainig friends -->
-  <source src="/assets/img/what-actually-happens-when-you-run-copy-in-postgres/code.mp4" type="video/mp4">
-</video>
+<img src="/assets/img/what-actually-happens-when-you-run-copy-in-postgres/code.gif">
 <figcaption style="text-align:center">handleCopyIn's source code</figcaption>
 
 I suggest opening up the [code in GitHub](https://github.com/postgres/postgres/blob/master/src/bin/psql/copy.c#L511) (or cloning the repository and using your IDE) for the next section. For our purposes, we'll focus our attention on [L592-L668](https://github.com/postgres/postgres/blob/master/src/bin/psql/copy.c#L592-L668). There's quite a bit of handling for scenarios such as if the input is interactive, if we're copying in binary, or if there's a signal interrupt. To aid the reader, I've copied the pertinent section behind this code block (though I suggest cloning and reading along, you get better highlighting),
