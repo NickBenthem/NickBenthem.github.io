@@ -326,7 +326,7 @@ Let's go through the above function `handleCopyIn` at a high level. The general 
 	- We do this by sending the current connection, the buffer, and the length of data in the buffer (`buflen`) to `PQputCopyData``.
 	- `PQputCopyData` returns 1 if successful, 0 if data couldn't be sent, or -1 if an error occurs. 
 - **Repeat until done.**
-- **Finalize transmission by calling `PQputCopyData`**
+- **Finalize transmission by calling `PQputCopyEnd`**
 
 # How do `PQputCopyData` and `PQputCopyEnd` work?
 
