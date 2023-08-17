@@ -12,9 +12,61 @@ toc: true
 # Background
 I recently had a question come up as to why the COPY command is more performant than performing a series of INSERTs. I'd known that COPY is [much more performant](https://www.cybertec-postgresql.com/en/bulk-load-performance-in-postgresql/) than inserting records via `INSERT INTO`. While trying to come up with an answer, I realized that I didn't know how COPY is implemented. This meant that any attempt to come up with an answer was in vain. By writing this post, I hope to narrow that knowledge gap and help myself get a deeper understanding of my favorite database. 
 
-This post will focus primarily on the Postgres implementation when performing a `COPY FROM` command and will stop short of diving into the internals of `libpq` . This post will also serve as a primer for understanding how `INSERT INTO` works, but I won't go into much detail. 
+This post will focus primarily on the Postgres implementation when performing a `COPY FROM` command and will stop short of diving into the internals of `libpq`. This post will also serve as a primer for understanding how `INSERT INTO` works, but I won't go into much detail. I will start by going over what the `COPY FROM` command is, how Postgres packages data to send to `libpq`, and dive into the C function in Postgres that implements the data transfer. 
 
-Previously I had thought that COPY was somehow special, perhaps opening a direct file connection to the underlying data table to achieve the speed COPY does - but that's not the case. As we'll see, COPY loads in data and utilizes a special code path to minimizes the amount of overhead to transmit data to the `libpq` backend. One of the best parts of Postgres (or open source in general) is that we can look at the source code & documentation, so we'll be diving right into some source code. Let's get started.
+I had previously thought that COPY was somehow special, perhaps by opening a direct file connection to the underlying data table to achieve the speed COPY does - but that's not the case. As we'll see, COPY loads in data and utilizes a special code path to minimizes the amount of overhead to transmit data to the `libpq` backend. One of the best parts of Postgres (or open source in general) is that we can look at the source code & documentation, so we'll be diving right into some source code. Let's get started.
+
+# What even is the COPY command? 
+Postgres provides two primary ways of inserting data into a table:
+
+- `INSERT INTO` and,
+- `COPY FROM`. 
+
+To insert data using `INSERT INTO`, we can imagine we have a `users` table with `id`,`name`, and `email`:
+
+```sql
+CREATE TABLE users (
+    id INT,
+    name VARCHAR(100),
+    email VARCHAR(255) 
+);
+```
+
+To populate this table with data, we can execute a SQL statement to insert our users:
+
+``` sql
+INSERT INTO users(id, name, email) VALUES 
+(1, 'John Doe', 'john.doe@example.com'),
+(2, 'Jane Smith', 'jane.smith@example.com');
+```
+
+An alternative approach than the above is to utilize the [COPY FROM](https://www.postgresql.org/docs/current/sql-copy.html) command. To use `COPY FROM`, we first must create a `users.csv` file that contains the following data:
+
+```
+1,John Doe,john.doe@example.com
+2,Jane Smith,jane.smith@example.com
+```
+
+Then, by executing the following SQL command, we can load the data via `COPY FROM`:
+
+``` sql
+COPY users(id, name, email) 
+FROM 'data.csv' DELIMITER ',' CSV;
+```
+
+When bulk loading large amounts of data, `COPY FROM` is [significantly faster](https://www.cybertec-postgresql.com/en/bulk-load-performance-in-postgresql/) than any other method. `COPY FROM` allows you to efficiently migrate data into SQL.
+
+Many database systems that implement a SQL dialect also support some form of `COPY FROM`, including [Redshift](https://docs.aws.amazon.com/redshift/latest/dg/r_COPY.html), [Snowflake](https://docs.snowflake.com/en/sql-reference/sql/copy-into-table),  [CockroachDB](https://www.cockroachlabs.com/docs/stable/copy-from), [MySQL (via LOAD DATA)](https://dev.mysql.com/doc/refman/8.0/en/load-data.html), and plenty of others. Certain systems like Snowflake allow you to load not just from local storage, but from Amazon S3, Google Cloud Storage, or Microsoft Azure. Database drivers (like Psycopg2 & Pyscopg3) [implement support for COPY](https://www.psycopg.org/psycopg3/docs/basic/copy.html):
+
+```python
+users = [(1, "John Doe", "john.doe@example.com"), (2, "Jane Smith", "jane.smith@example.com")]
+with cursor.copy("COPY users (id, name, email) FROM STDIN") as copy:
+	for user in users:
+		copy.write_row(user)
+```
+
+However, for the purposes of our discussion, I'll be limiting myself to the COPY FROM command in Postgres which uses the `FILE` type in C. 
+
 
 # What happens when a Postgres query is executed? 
 When executing a valid SQL query command (i.e., `COPY FROM`, `SELECT ... FROM`, `INSERT INTO ...`), Postgres will rely on sending the command to `libpq`, the API backend for Postgres. To effectively communicate, Postgres will encode the command according to the message protocol that `libpq` uses. There are [a variety of different message types and formats](https://www.postgresql.org/docs/current/protocol-message-formats.html) supported by `libpq`. For the case of a SQL query that the user enters, the payload will consist of the following elements:
@@ -260,7 +312,7 @@ handleCopyIn(PGconn *conn, FILE *copystream, bool isbinary, PGresult **res)
 
 Let's go through the above function `handleCopyIn` at a high level. The general process the function follows is:
 
-- **Instantiate `buf` and `buflen` to have a buffer in memory we'll use.**
+- **Instantiate `buf` and `buflen` as a buffer.**
 	- `buf` is an array which can store at most 8192 bytes of data.
 	- `buflen` represents the current amount of data we've loaded into `buf`.
 	-  We'll continuously write data to `buf`, and flush[^1] the data from `buf` as we go. 
@@ -279,7 +331,7 @@ Let's go through the above function `handleCopyIn` at a high level. The general 
 
 # How do `PQputCopyData` and `PQputCopyEnd` work?
 
-In the previous function `handleCopyIn`, we're continuously iterating through the `FILE` input. `PQputCopyData` handles the flushing[^1] of the buffer while ensuring that messages are encoded and sent out to `libpq`. As we can see in `handleCopyIn`. As [mentioned previously](#what-happens-when-a-postgres-query-is-executed), to communicate with `libpq` we construct a message to send over. The COPY functionality has a unique `d` [(https://www.postgresql.org/docs/current/protocol-message-formats.html)](message type) that `libpq` uses to receive COPY data from Postgres. `d` is the CopyData message, and has the following elements:
+In the previous function `handleCopyIn`, we're continuously iterating through the `FILE` input. `PQputCopyData` handles the flushing[^1] of the buffer while ensuring that messages are encoded and sent out to `libpq`. As [mentioned previously](#what-happens-when-a-postgres-query-is-executed), to communicate with `libpq` we must construct a message. The COPY functionality has a unique `d` [(https://www.postgresql.org/docs/current/protocol-message-formats.html)](message type) that `libpq` uses to receive COPY data from Postgres. To create a CopyData message, the message needs to have the following elements:
 
 - Byte1('d') (Identifies the message as COPY data.)
 - Int32 (Length of message contents in bytes, including self.)
