@@ -368,18 +368,18 @@ An important implementation note is that we never perform additional processing 
 ```c
 if (errormsg)
 {
-    /* Send COPY FAIL */
-    if (pqPutMsgStart('f', conn) < 0 ||
-        pqPuts(errormsg, conn) < 0 ||
-        pqPutMsgEnd(conn) < 0)
-        return -1;
+  /* Send COPY FAIL */
+  if (pqPutMsgStart('f', conn) < 0 ||
+      pqPuts(errormsg, conn) < 0 ||
+      pqPutMsgEnd(conn) < 0)
+      return -1;
 }
 else
 {
-    /* Send COPY DONE */
-    if (pqPutMsgStart('c', conn) < 0 ||
-        pqPutMsgEnd(conn) < 0)
-        return -1;
+  /* Send COPY DONE */
+  if (pqPutMsgStart('c', conn) < 0 ||
+      pqPutMsgEnd(conn) < 0)
+      return -1;
 }
 ```
 
