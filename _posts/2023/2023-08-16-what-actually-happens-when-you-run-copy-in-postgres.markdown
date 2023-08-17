@@ -10,7 +10,6 @@ toc: true
 
 I recently had someone ask me why the `COPY` command is more performant than `INSERT INTO`. While coming up with an answer, I discovered I was starting from a deficient: I didn't know how `COPY` works under the hood. Trying to come up with an answer was at best a guess. Through this post, I hope to narrow that knowledge gap and help myself and others get a deeper understanding of my favorite database.  
 
-
 This post will focus primarily on the Postgres implementation when performing a `COPY` command and will stop short of diving into the internals of Postgres' API layer, `libpq`.  I will start by going over what the `COPY` command is, how Postgres packages data to send to `libpq`, and dive into the C function in Postgres that implements the data transfer. This post will also serve as a background primer for understanding how `INSERT INTO` works, but only through examining how queries are sent to Postgres.
 
 I had previously thought that `COPY` was somehow special, perhaps by opening a direct file connection to the underlying data table to achieve the speed `COPY` does - but that's not the case. As we'll see, `COPY` works by buffering data and utilizing a special code path to transmit data to the `libpq` backend. One of the best parts of Postgres (or open source in general) is that we can look at the source code & documentation, so we'll be diving right into some C code. Let's get started.
@@ -114,7 +113,10 @@ When a `COPY ... FROM STDIN` command is sent, `libpq` will return a result statu
 `handleCopyIn` is a workhorse responsible for consuming the `FILE` stream, streaming the data to `libpq`, and finalizing the COPY. There's a lot of code to break down in `handleCopyIn`. 
 
 <video muted autoplay loop style="width:100%">
-    <source src="/assets/img/what-actually-happens-when-you-run-copy-in-postgres/code.mp4" type="video/mp4">
+  <!-- for safari or iOS or anything Apple -->
+  <source src="/assets/img/what-actually-happens-when-you-run-copy-in-postgres/code.m4v" type="video/x-m4v">
+  <!-- for chrome, firefox, android and remainig friends -->
+  <source src="/assets/img/what-actually-happens-when-you-run-copy-in-postgres/code.mp4" type="video/mp4">
 </video>
 <figcaption style="text-align:center">handleCopyIn's source code</figcaption>
 
