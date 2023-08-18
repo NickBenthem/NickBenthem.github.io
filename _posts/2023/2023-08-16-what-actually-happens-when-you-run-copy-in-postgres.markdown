@@ -10,9 +10,11 @@ toc: true
 
 I recently had someone ask me why the `COPY` command is more performant than `INSERT INTO`. While coming up with an answer, I discovered I was starting from a deficient: I didn't know how `COPY` works under the hood. Trying to come up with an answer was at best a guess. Through this post, I hope to narrow that knowledge gap and help myself and others get a deeper understanding of my favorite database.  
 
-This post will focus primarily on the Postgres implementation when performing a `COPY` command and will stop short of diving into the internals of Postgres' API layer, `libpq`.  I will start by going over what the `COPY` command is, how Postgres packages data to send to `libpq`, and dive into the C function in Postgres that implements the data transfer. This post will also serve as a background primer for understanding how `INSERT INTO` works, but only through examining how queries are sent to Postgres.
+This post will focus primarily on the Postgres `psql` implementation when performing a `COPY` command and will stop short of diving into the internals of Postgres' API layer, `libpq`. `libpq` is a set of library functions that allow client programs to pass queries to the PostgreSQL backend server.[^3] 
 
-I had previously thought that `COPY` was somehow special, perhaps by opening a direct file connection to the underlying data table to achieve the speed `COPY` does - but that's not the case. As we'll see, `COPY` works by buffering data and utilizing a special code path to transmit data to the `libpq` backend. One of the best parts of Postgres (or open source in general) is that we can look at the source code & documentation, so we'll be diving right into some C code. Let's get started.
+I will start by going over what the `COPY` command is, how `psql` packages data to send to `libpq`, and dive into the C function in Postgres that implements the data transfer. This post will also serve as a background primer for understanding how `INSERT INTO` works, but only through examining how queries are sent to Postgres. 
+
+I had previously thought that `COPY` was somehow special, perhaps by opening a direct file connection to the underlying data table to achieve the speed `COPY` does - but that's not the case. As we'll see, `COPY` in `psql` works by buffering data and utilizing a special code path to transmit data to the `libpq` API. One of the best parts of Postgres (or open source in general) is that we can look at the source code & documentation, so we'll be diving right into some C code. Let's get started.
 
 # What even is the `COPY` command? 
 Postgres provides two primary ways of inserting data into a table:
@@ -52,6 +54,12 @@ COPY users(id, name, email)
 FROM 'data.csv' DELIMITER ',' CSV;
 ```
 
+Alternatively, you can execute this via `psql`:
+
+``` bash
+psql \copy users(id, name, email)  FROM 'data.csv' DELIMITER ',' CSV;
+```
+
 When bulk loading large amounts of data, `COPY` is [significantly faster](https://www.cybertec-postgresql.com/en/bulk-load-performance-in-postgresql/) than any other method. Generally around ~250k rows of data is where the speed of `INSERT INTO` becomes too slow and I resort to writing a `COPY` command.
 
 Many database systems with SQL-esque dialects also support some form of `COPY`, including [Redshift](https://docs.aws.amazon.com/redshift/latest/dg/r_COPY.html), [Snowflake](https://docs.snowflake.com/en/sql-reference/sql/copy-into-table),  [CockroachDB](https://www.cockroachlabs.com/docs/stable/copy-from), [MySQL (via LOAD DATA)](https://dev.mysql.com/doc/refman/8.0/en/load-data.html), and plenty of others. Certain systems like Snowflake allow you to load not just from a filepath, but also from Amazon S3, Google Cloud Storage, or Microsoft Azure. Database drivers (like Psycopg2 & Pyscopg3) [implement support for COPY](https://www.psycopg.org/psycopg3/docs/basic/copy.html) like so:
@@ -66,8 +74,8 @@ with cursor.copy("COPY users (id, name, email) FROM STDIN") as copy:
 However, for the purposes of our discussion, I'll be limiting myself to the `COPY` FROM command in Postgres which uses the `FILE` type in C. 
 
 
-# How Postgres transfers data to `libq` 
-When executing a valid SQL query command (i.e., `COPY`, `SELECT ... FROM`, `INSERT INTO ...`), Postgres will rely on sending the command to `libpq`, the API backend for Postgres. To effectively communicate, Postgres will encode the command according to the message protocol that `libpq` uses. There are [a variety of different message types and formats](https://www.postgresql.org/docs/current/protocol-message-formats.html) supported by `libpq`. For the case of a SQL query that the user enters, the payload will consist of the following elements:
+# How psql transfers data to `libpq` 
+When executing a valid SQL query command (i.e., `COPY`, `SELECT ... FROM`, `INSERT INTO ...`), Postgres will rely on sending the command to `libpq`, the API to Postgres. To effectively communicate, Postgres will encode the command according to the message protocol that `libpq` uses. There are [a variety of different message types and formats](https://www.postgresql.org/docs/current/protocol-message-formats.html) supported by `libpq`. For the case of a SQL query that the user enters, the payload will consist of the following elements:
 
 - Byte1('Q') (Identifies the message as a simple query.)
 - Int32 (Length of message contents in bytes, including self.)
@@ -334,3 +342,7 @@ Thanks for reading - let me know if this was helpful or if I missed anything :sm
 [^1]: Flushing refers to evacuating a buffer and moving the data somewhere else. My mental model is to think of data as a liquid, and we're filling a sink. We continuously load up the same sink, but have different liquid in the sink each time. When the sink is about to overflow, we "flush" the data - taking data that's in our sink and moving that data to a new location. We then allow our sink to refill with new, potentially different data. We never move the sink, just the liquid in the sink.
 
 [^2]: You might notice there's also a `PGRES_COPY_OUT` command that can be used to offload SQL output to a file, but we'll ignore that for now. 
+
+[^3]: https://www.postgresql.org/docs/current/libpq.html
+## Edits:
+- 2023-08-18 - Updated the introduction to clarify this post focuses on the `\copy` command issued by `psql`, not the backend `COPY`. Thank you [sitharus](https://news.ycombinator.com/user?id=sitharus) and [terom](https://news.ycombinator.com/user?id=terom)! Also fixed a typo (thanks [Diablo3](https://news.ycombinator.com/user?id=DiabloD3))
