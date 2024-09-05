@@ -1,0 +1,29 @@
+Git ---
+layout: post
+title: User-defined aggregate functions using Databricks SQL
+date: YYYY-MM-DD HH:MM
+tags: [tag1,tag2]
+author: Nick
+summary: Summary of the article
+share: true
+---
+
+- Things to talk about:
+  - Anatomy of an aggregation
+  - Simple Example 
+    Drawing here for sure.  
+    (https://explainextended.com/2023/12/31/happy-new-year-15/)
+    llm(prompt: str) -> list[tuple[str, float]] was great .
+  - Syntax: break down how to write headcounting algorithms - apply a transaction per time period. 
+    - REDUCE(
+      <Map>,
+      <Whateverhere>,
+      <Optional>
+    )
+  - Databricks note: REDUCE() / AGGREGATE()
+  - Performance Benchmarking
+  - SUM vs Custom SUM
+
+Alternative Terms:
+- User-defined aggregate functions
+custom aggregations databricks
