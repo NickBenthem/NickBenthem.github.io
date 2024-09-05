@@ -30,12 +30,12 @@
   }
 
   @include breakpoint($large) {
-    margin-top: (-2 * $site-logo-height) / 2;
-  }
+  margin-top: (-2 * $site-logo-height) / 2;
+}
 
-  img {
-    width: 100%;
-  }
+img {
+  width: 100%;
+}
 }
 
 .page-image-caption {
@@ -203,6 +203,7 @@
 
 .layout--home,
 .layout--posts,
+.layout--snippets,
 .layout--categories,
 .layout--tags,
 .layout--category,
