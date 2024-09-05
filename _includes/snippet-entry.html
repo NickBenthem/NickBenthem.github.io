@@ -1,0 +1,13 @@
+<article class="entry">
+    <h3 class="entry-title">
+      <a href="{{ entry.url | relative_url }}" rel="bookmark">{{ entry.title }}</a>
+    </h3>
+    <div class="entry-excerpt">
+      {{ entry.excerpt | markdownify | strip_html | truncate: 160 }}
+    </div>
+    {% if entry.date %}
+      <div class="entry-meta">
+        <time class="entry-date" datetime="{{ entry.date | date_to_xmlschema }}">{{ entry.date | date: "%B %-d, %Y" }}</time>
+      </div>
+    {% endif %}
+  </article>

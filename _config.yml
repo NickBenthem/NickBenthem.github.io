@@ -26,6 +26,12 @@ url: "https://benthem.io" # the base hostname & protocol for your site, e.g. htt
 markdown: kramdown
 #remote_theme: "mmistakes/so-simple-theme@3.2.0"
 
+# Add this section to your _config.yml
+collections:
+  snippets:
+    output: true
+    permalink: /:collection/:name/
+
 plugins:
   - jekyll-feed
   - jekyll-paginate

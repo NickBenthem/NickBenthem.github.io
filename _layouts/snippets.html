@@ -1,0 +1,29 @@
+---
+layout: page
+---
+
+{{ content }}
+
+<ul class="taxonomy-index">
+  {% assign snippetsInCategory = site.snippets | group_by: 'category' %}
+  {% for category in snippetsInCategory %}
+    <li>
+      <a href="#{{ category.name | slugify }}">
+        <strong>{{ category.name }}</strong> <span class="taxonomy-count">{{ category.items | size }}</span>
+      </a>
+    </li>
+  {% endfor %}
+</ul>
+
+{% assign snippetsByCategory = site.snippets | group_by: 'category' %}
+{% for category in snippetsByCategory %}
+  <section id="{{ category.name | slugify }}" class="taxonomy-section">
+    <h2 class="taxonomy-title">{{ category.name }}</h2>
+    <div class="entries-{{ page.entries_layout | default: 'list' }}">
+      {% for entry in category.items %}
+        {% include snippet-entry.html %}
+      {% endfor %}
+    </div>
+    <a href="#page-title" class="back-to-top">{{ site.data.text[site.locale].back_to_top | default: 'Back to Top' }} &uarr;</a>
+  </section>
+{% endfor %}
