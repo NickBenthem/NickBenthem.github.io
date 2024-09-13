@@ -219,7 +219,7 @@ img {
   }
 }
 
-.layout--post {
+.layout--post, .layout--snippet {
   .page-wrapper {
     @include breakpoint($large) {
       display: grid;

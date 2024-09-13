@@ -6,10 +6,11 @@ layout: page
 
 <div class="entries-{{ page.entries_layout | default: 'list' }}">
   {% assign snippetsInCategory = site.snippets | group_by: 'category' %}
-  {% for category in snippetsInCategory %}
+  {% for category in snippetsInCategory  %}
     <section id="{{ category.name | slugify }}" class="taxonomy-section">
       <h2 class="taxonomy-title">{{ category.name }}</h2>
-      {% for entry in category.items %}
+      {% assign sorted_entries = category.items | reverse %}
+      {% for entry in sorted_entries %}
         {% include snippet-entry.html %}
       {% endfor %}
     </section>

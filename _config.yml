@@ -92,6 +92,15 @@ google_fonts:
     weights: "400,400i,700,700i"
   - name: "Lora"
     weights: "400,400i,700,700i"
+
+jekyll_compose:
+  default_front_matter:
+    layout: "post"
+    author: "Nick"
+  post_default:
+    folder_format: "/%Y"
+
+
 # Exclude from processing.
 # The following items will not be processed, by default. Create a custom list
 # to override the default setting.

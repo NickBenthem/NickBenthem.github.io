@@ -27,6 +27,7 @@ group :jekyll_plugins do
   gem "jekyll-figure"
   gem 'jekyll-toc'
   gem 'jemoji'
+  gem 'jekyll-compose'
 
 end
 
