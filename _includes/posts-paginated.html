@@ -1,4 +1,6 @@
-{%- for entry in paginator.posts -%}
+{%- assign combined_entries = paginator.posts | concat: site.snippets -%}
+{%- assign sorted_entries = combined_entries | sort: 'date' | reverse -%}
+{%- for entry in sorted_entries -%}
   {% include entry.html %}
 {%- endfor -%}
 

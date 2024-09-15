@@ -53,15 +53,20 @@
 
 .entry-meta {
   .entry-date,
+  .entry-type::after {
+    content: "\2022";
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+  }
   .read-time {
     font-family: $meta-font-family;
     font-style: italic;
     white-space: nowrap;
   }
 
-  .read-time + .entry-date::before {
+  .entry-type + .read-time + .entry-date::before  {
     content: "\2022";
-    padding: 0 0.5em;
+    padding-right:  0.5em;
   }
 }
 

@@ -31,6 +31,13 @@
   {% endunless %}
   {% if site.read_time or entry.date and page.layout != 'collection' %}
     <footer class="entry-meta">
+      <span class="entry-type">
+          {% if entry.collection == 'snippets' %}
+            <span class="label label-snippet">Snippet</span>
+          {% else %}
+            <span class="label label-post">Post</span>
+          {% endif %}
+       </span>
       {% if site.read_time %}{% include read-time.html %}{% endif %}
       {% if entry.date %}{% include entry-date.html %}{% endif %}
     </footer>
